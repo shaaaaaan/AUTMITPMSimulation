@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ITPM Simulation</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.2/angular.min.js"></script>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/7.24.0/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/7.24.0/firebase-auth.js"></script>
+    <script defer src="/__/firebase/7.24.0/firebase-database.js"></script>
+    <script defer src="/__/firebase/7.24.0/firebase-messaging.js"></script>
+    <script defer src="/__/firebase/7.24.0/firebase-storage.js"></script>
+    <script defer src="/__/firebase/7.24.0/firebase-analytics.js"></script>
+    <script defer src="/__/firebase/7.24.0/firebase-remote-config.js"></script>
+    <script defer src="/__/firebase/7.24.0/firebase-performance.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+<!--    <style media="screen">-->
+<!--      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }-->
+<!--      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }-->
+<!--      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }-->
+<!--      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}-->
+<!--      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }-->
+<!--      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }-->
+<!--      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }-->
+<!--      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }-->
+<!--      @media (max-width: 600px) {-->
+<!--        body, #message { margin-top: 0; background: white; box-shadow: none; }-->
+<!--        body { border-top: 16px solid #ffa100; }-->
+<!--      }-->
+<!--    </style>-->
+  </head>
+  <body ng-app="myApp" style="font-family: cursive">
+  <div ng-controller="myController as ctrl">
+    <button ng-click="ctrl.mode = 'main'">Simulation</button>
+    <button ng-click="ctrl.mode = 'actors'">Actors</button>
+    <button ng-click="ctrl.mode = 'tasks'">Tasks</button>
+    <button ng-click="ctrl.mode = 'problems'">Problems</button>
+    <button ng-click="ctrl.mode = 'settings'">Settings</button>
+    <div ng-show="ctrl.mode==='actors'">
+      <button ng-click="ctrl.saveActors(ctrl.appData.actors)">Save</button>
+      <button ng-click="ctrl.refresh()">Cancel</button>
+      <button ng-click="ctrl.appData.actors.push({})">Add Actor</button>
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Cost (0%-200%)</th>
+          <th>Performance (0%-200%)</th>
+          <th>Reliability (0%-100%)</th>
+          <th>Delete</th>
+        </tr>
+        <tr ng-repeat="actor in ctrl.appData.actors">
+          <td>{{$index}}</td>
+          <td><input placeholder="Name" ng-model="actor.name"></td>
+          <td><input placeholder="Role" ng-model="actor.role"></td>
+          <td><input placeholder="Cost" ng-model="actor.cost"></td>
+          <td><input placeholder="Performance" ng-model="actor.perf"></td>
+          <td><input placeholder="Reliability" ng-model="actor.reliability"></td>
+          <td><button ng-click="ctrl.appData.actors.splice($index,1)">Delete</button></td>
+        </tr>
+      </table>
+    </div>
+    <div ng-show="ctrl.mode==='tasks'">
+      <button ng-click="ctrl.saveTasks(ctrl.appData.tasks)">Save</button>
+      <button ng-click="ctrl.refresh()">Cancel</button>
+      <button ng-click="ctrl.appData.tasks.push({})">Add Task</button>
+      <div style="height: 20vh; overflow-y: scroll">
+        <table style="height: 100%; width: 100%;">
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Start Day #</th>
+            <th>Duration</th>
+            <th>Role</th>
+            <th>Linked Task</th>
+            <th>Description</th>
+            <th>Delete</th>
+          </tr>
+          <tr ng-repeat="task in ctrl.appData.tasks">
+            <td>{{$index}}</td>
+            <td><input placeholder="Name" ng-model="task.name"></td>
+            <td><input placeholder="Start Day" ng-model="task.startDay" ng-change="ctrl.durationChanged()"></td>
+            <td><input placeholder="Duration" ng-model="task.duration" ng-change="ctrl.durationChanged()"></td>
+            <td><select ng-model="task.role"><option value="">anyone</option><option ng-repeat="role in ctrl.uniqueRoles" value="{{role}}">{{role}}</select></td>
+            <td><select ng-model="task.linkedTask"><option value="">none</option><option ng-repeat="taskName in ctrl.uniqueTasks" value="{{taskName}}">{{taskName}}</select></td>
+            <td><input placeholder="Description" ng-model="task.description"></td>
+            <td><button ng-click="ctrl.appData.tasks.splice($index,1)">Delete</button></td>
+          </tr>
+        </table>
+      </div>
+      <!--            <div ng-repeat="task in ctrl.appData.tasks">-->
+      <!--                <div ng-init="x=[+task.startDay + +task.duration];">X is {{x}};startday = {{task.startDay}}; duration = {{task.duration}}</div>-->
+      <!--            </div>-->
+      <div>Total Duration: {{ctrl.totalDuration}}</div>
+      <br>
+      <div style="width: 100%; overflow-x: scroll; height: 60vh;">
+        <table id="taskPlanner" style="border: black; border-style: solid; width: 100%; height: 100%;">
+          <tr>
+            <th ng-repeat="duration in ctrl.totalDurationRange">Day<br>{{duration}}</th>
+          </tr>
+          <tr ng-repeat="task in ctrl.appData.tasks">
+            <td ng-if="+task.startDay>1" colspan="{{(+task.startDay >= 1 ? +task.startDay-1 : (+task.startDay))}}" style="border: black; border-style: none; width: 10px"></td>
+            <td colspan="{{+task.duration}}" style="border: black; border-style: solid; ; width: 10px">Task: {{task.name}}</td>
+          </tr>
+        </table>
+
+      </div>
+
+
+      <!--            <div ng-init="x=[5];">-->
+      <!--                <div ng-if="i>0" ng-repeat="i in x">-->
+      <!--                    &lt;!&ndash; this content will repeat for 5 times. &ndash;&gt;-->
+      <!--                    <table class="table table-striped">-->
+      <!--                        <tr>-->
+      <!--                            <td>TEST</td>-->
+      <!--                        </tr>-->
+      <!--                    </table>-->
+      <!--                    <p ng-init="x.push(i-1)"></p>-->
+      <!--                </div>-->
+      <!--            </div>-->
+    </div>
+    <div ng-show="ctrl.mode==='problems'">
+      <button ng-click="ctrl.saveProblems(ctrl.appData.problems)">Save</button>
+      <button ng-click="ctrl.refresh()">Cancel</button>
+      <button ng-click="ctrl.appData.problems.push({})">Add Problem</button>
+      <table>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Duration (days)</th>
+          <th>%Chance of occurrence</th>
+          <th>Happens every 'x' days</th>
+          <th>Issue Description</th>
+          <th>Resolution Description</th>
+          <th>Applies To</th>
+          <th>Further Refinement</th>
+          <th>Delete</th>
+        </tr>
+        <tr ng-repeat="problem in ctrl.appData.problems">
+          <td>{{$index}}</td>
+          <td><input placeholder="Name" ng-model="problem.name"></td>
+          <td><input placeholder="Duration" ng-model="problem.duration"></td>
+          <td><input placeholder="%Chance of occurrence" ng-model="problem.chance"></td>
+          <td><input placeholder="Frequency" ng-model="problem.freq"></td>
+          <td><input placeholder="Description" ng-model="problem.description"></td>
+          <td><input placeholder="Resolution" ng-model="problem.resolution"></td>
+          <td><select ng-model="problem.target" ng-change="problem.subTarget=''"><option value="">project</option><option value="actors">actors</option><option value="tasks">tasks</option><option value="roles">tasks</option></select></td>
+          <td>
+            <div ng-show="problem.target=='actors'">
+              <select ng-model="problem.subTarget">
+                <option value="">any actor</option>
+                <option value="{{role}}" ng-repeat="role in ctrl.uniqueActors">{{role}}</option>
+              </select>
+            </div>
+            <div ng-show="problem.target=='tasks'">
+              <select ng-model="problem.subTarget">
+                <option value="">any task</option>
+                <option value="{{taskName}}" ng-repeat="taskName in ctrl.uniqueTasks">Task: {{taskName}}</option>
+              </select>
+            </div>
+            <div ng-show="problem.target=='roles'">
+              <select ng-model="problem.subTarget">
+                <option value="">any role</option>
+                <option value="{{role}}" ng-repeat="role in ctrl.uniqueRoles">{{role}}</option>
+              </select>
+            </div>
+            <div ng-hide="problem.target.length>1">-</div>
+          </td>
+          <td><button ng-click="ctrl.appData.problems.splice($index,1)">Delete</button></td>
+        </tr>
+      </table>
+    </div>
+    <div ng-show="ctrl.mode==='settings'">
+      <button ng-click="ctrl.saveSettings(ctrl.appData.settings)">Save</button>
+      <table>
+        <tr>
+          <th>Setting</th>
+          <th>Value</th>
+          <th>Description</th>
+        </tr>
+        <tr ng-repeat="(key, val) in ctrl.appData.settings">
+          <td>{{val.name}}</td>
+          <td><input ng-model="val.value"></td>
+          <td>{{val.description}}</td>
+        </tr>
+      </table>
+    </div>
+    <div ng-show="ctrl.mode==='main'">
+      <!--            <button ng-click="ctrl.saveTasks(ctrl.appData.tasks)">Save</button>-->
+      <button ng-hide="ctrl.simulating" ng-click="ctrl.simulate()">Start</button>
+      <button ng-show="ctrl.simulating" ng-click="ctrl.stopSimulation()">Stop</button>
+      <button ng-click="ctrl.refresh()">Refresh Data</button>
+      <label>Speed: <select ng-model="ctrl.simulationSpeed"><option value="400">Default</option><option value="150">Fast</option><option value="600">Slow</option></select></label>
+      <!--            <p>Value: {{ctrl.value}}</p>-->
+      <!--            <button type="button" ng-click="ctrl.increment(1)">Increment</button>-->
+      <!--            <button type="button" ng-click="ctrl.increment(-1)">Decrement</button>-->
+
+      <h3>
+        <table style="width: 100%; border-top: solid; ">
+          <tr>
+            <th style="width: 33%"></th>
+            <th style="width: 33%"></th>
+            <th style="width: 33%"></th>
+          </tr>
+          <tr>
+            <td colspan="3" style="text-align: center">Project Summary <span ng-style="{'color': ( (ctrl.completedTasks < ctrl.totalTasks) || (ctrl.actualCosts > ctrl.totalBudget) || (ctrl.actualWork < ctrl.totalWork) ) ? 'red' : 'forestgreen'}">{{( (ctrl.completedTasks < ctrl.totalTasks) || (ctrl.actualCosts > ctrl.totalBudget) || (ctrl.actualWork < ctrl.totalWork) ) ? 'Incomplete' : 'Completed'}}</span></td></tr>
+          <tr>
+            <td style="text-align: center; border: solid; border-top: 0; border-left: 0;"><span ng-style="{'color' : (ctrl.completedTasks < ctrl.totalTasks) ? 'red' : 'forestgreen' }">{{ctrl.completedTasks}} of {{ctrl.totalTasks}} Tasks Completed</span></td>
+            <td style="text-align: center; border: solid; border-top: 0;"><span ng-style="{'color' : (ctrl.actualCosts < ctrl.totalBudget) ? 'forestgreen' : 'red' }">Budget Available: {{ctrl.totalBudget - ctrl.actualCosts | number : 2}}</span></td>
+            <td style="text-align: center; border: solid; border-top: 0; border-right: 0;">
+              <span ng-hide="ctrl.allTasksCompletedDayIdx" ng-style="{'color' : (ctrl.actualWork < ctrl.totalWork) ? 'red' : 'forestgreen' }">Work Remaining: {{ctrl.totalWork - ctrl.actualWork | number : 2}}</span>
+              <span ng-show="ctrl.allTasksCompletedDayIdx" ng-style="{'color' : (ctrl.allTasksCompletedDayIdx < ctrl.totalDuration) ? 'forestgreen' : 'red' }">{{ctrl.allTasksCompletedDayIdx < ctrl.totalDuration ? ctrl.totalDuration-ctrl.allTasksCompletedDayIdx : ctrl.allTasksCompletedDayIdx-ctrl.totalDuration}} Days {{ctrl.allTasksCompletedDayIdx < ctrl.totalDuration ? 'Ahead of' : 'Behind the'}} Plan</span>
+            </td>
+
+          </tr>
+        </table>
+      </h3>
+      <div style="width: 100%; overflow-x: auto;">
+        <table style="border: black; border-style: solid; width: 100%; height: 100%;">
+          <thead>
+          <tr>
+            <th ng-style="{'width': '10px','color': (dayIdx == ctrl.currentDayIdx ? 'white' : 'black'),'background': (dayIdx == ctrl.currentDayIdx ? 'black' : 'white')}" ng-repeat="dayIdx in ctrl.totalDurationRange">Day<br>{{dayIdx}}</th>
+          </tr>
+          </thead>
+          <tr ng-repeat="task in ctrl.appData.tasks">
+            <td  ng-if="+task.$$adjustedStartDay>1" colspan="{{(+task.$$adjustedStartDay >= 1 ? +task.$$adjustedStartDay-1 : (+task.$$adjustedStartDay))}}" style="border: black; border-style: none; width: 10px;max-width: 10px;word-wrap: break-word;"></td>
+            <td colspan="{{((+task.$$displayDuration-(task.$$diffDays || 0)) >= ctrl.totalDuration ? 1 : (+task.$$displayDuration-(task.$$diffDays || 0))) }}" style="border: black; border-style: solid; width: 10px; max-width: 10px;word-wrap: break-word; border-width: 2px;" ng-style="{'border-right': (task.$$status == 'Ahead' ? 0 : 'solid black 2px')}">
+              <div style="overflow-wrap: normal;">
+                Task: {{task.name}} {{task.role.length ? '('+task.role+')' : ''}}
+                <br>
+                <!--                                Role: {{task.role || 'anyone'}}-->
+                <!--                                <br>-->
+                Status: <span ng-style="{'background': task.$$statusColor || 'black', 'color': 'white', 'padding-left': '5px', 'padding-right': '5px'}">{{task.$$status || 'Scheduled' }}</span>
+                <br>
+                <select ng-disabled="ctrl.simulating" ng-model="task.$$actorAssigned"><option value="{{actor}}" ng-repeat="actor in ctrl.appData.actors" ng-if="task.role == '' || !task.role || task.role == actor.role">{{actor.name}} {{actor.cost > 150 ? '↓costly' : actor.cost < 50 ? '↑cheap' : ''}} {{actor.perf > 150 ? '↑fast' : actor.perf < 100 ? '↓slow' : ''}}</option></select> <!--  {{actor.reliability > 80 ? '↑reliable' : actor.reliability < 40 ? '↓unrelia' : ''}}  -->
+                <!--  {{actor.name}} {{actor.cost > 150 ? '(↑ costly)' : actor.cost < 50 ? '(↓ cheap)' : ''}} {{actor.perf > 150 ? '(↑ fast)' : actor.perf < 50 ? '(↓ slow)' : ''}} {{actor.reliability > 75 ? '(↑ reliable)' : actor.reliability < 50 ? '(↓ unreliable)' : ''}} -->
+              </div>
+            </td>
+            <td ng-if="task.$$diffDays && task.$$status == 'Ahead'" colspan="{{task.$$diffDays}}" ng-style="{'background': 'forestgreen', 'color': 'white', 'border': 'black', 'border-style': 'dashed', 'border-left': 0, 'padding-left': '10px', 'vertical-align':'top', 'padding-top': '10px'}">Saved <span ng-show="ctrl.currentDayIdx > task.$$adjustedStartDay && task.$$diffDays">{{task.$$diffDays}} Day{{task.$$diffDays>1?'s':''}}</span><span ng-show="ctrl.currentDayIdx < task.$$adjustedStartDay-1">{{task.duration}} Day{{task.duration>1?'s':''}}</span></td>
+
+            <!--                        <td  ng-style="{'background': task.$$statusColor || 'black', 'color': 'white', 'max-width': '10px','word-wrap': 'break-word'}"> &lt;!&ndash; ng-if="ctrl.currentDayIdx>0" colspan="{{task.$$diffDays}}" &ndash;&gt;-->
+            <!--                            <div>{{task.$$status || 'Scheduled' }}<br>-->
+            <!--                                <div ng-show="ctrl.currentDayIdx > task.startDay && task.$$diffDays">{{task.$$diffDays}} day{{task.$$diffDays>1?'s':''}}</div>-->
+            <!--                                <div ng-show="ctrl.currentDayIdx < task.startDay-1">{{task.duration}} day{{task.duration>1?'s':''}}</div>-->
+            <!--                            </div>-->
+            <!--                        </td>-->
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.8.2/angular.min.js"></script>
+  <!-- Insert these scripts at the bottom of the HTML, but before you use any Firebase services -->
+
+  <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-app.js"></script>
+
+  <!-- If you enabled Analytics in your project, add the Firebase SDK for Analytics -->
+  <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-analytics.js"></script>
+
+  <!-- Add Firebase products that you want to use -->
+  <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.24.0/firebase-database.js"></script>
+  </body>
+<!--    <div id="message">-->
+<!--      <h2>Welcome</h2>-->
+<!--      <h1>Firebase Hosting Setup Complete</h1>-->
+<!--      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>-->
+<!--      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>-->
+<!--    </div>-->
+<!--    <p id="load">Firebase SDK Loading&hellip;</p>-->
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // const loadEl = document.querySelector('#load');
+        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+        // // The Firebase SDK is initialized and available here!
+        //
+        // firebase.auth().onAuthStateChanged(user => { });
+        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
+        // firebase.messaging().requestPermission().then(() => { });
+        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
+        // firebase.analytics(); // call to activate
+        // firebase.analytics().logEvent('tutorial_completed');
+        // firebase.performance(); // call to activate
+        //
+        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+
+        // try {
+        //   let app = firebase.app();
+        //   let features = [
+        //     'auth',
+        //     'database',
+        //     'messaging',
+        //     'storage',
+        //     'analytics',
+        //     'remoteConfig',
+        //     'performance',
+        //   ].filter(feature => typeof app[feature] === 'function');
+        //   loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
+        //
+        //   var database = firebase.database();
+        //
+        // } catch (e) {
+        //   console.error(e);
+        //   loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
+        // }
+      });
+    </script>
+  <script>
+
+    (function () {
+
+
+      angular
+              .module('myApp', [])
+              .controller('myController', ['$timeout', function($timeout) {
+                window.scope = angular.element(document.body).scope(); // only have one scope
+
+                var ctrl = this;
+                ctrl.mode = 'main';
+                ctrl.simulationSpeed = '400';
+
+                let database = firebase.database();
+
+                ctrl.refresh = function () {
+                  database.ref('/').once('value').then(function (result) {
+                    window.wappData = result.val();
+                    ctrl.appData = window.wappData;
+                    ctrl.appData.tasks = ctrl.appData.tasks || [];
+                    ctrl.appData.actors = ctrl.appData.actors || [];
+                    ctrl.appData.problems = ctrl.appData.problems || [];
+                    ctrl.uniqueRoles = [];
+                    ctrl.uniqueTasks = [];
+                    ctrl.uniqueActors = [];
+                    ctrl.currentDayIdx = 0;
+                    ctrl.runningServices = ctrl.runningServices || [];
+                    ctrl.simulating = false;
+                    ctrl.completedTasks = 0;
+                    ctrl.totalTasks = 0;
+                    ctrl.actualCosts = 0;
+                    ctrl.totalWork = 0;
+                    ctrl.actualWork = 0;
+                    ctrl.totalBudget = 0;
+                    ctrl.appData.actors.forEach(function (actor) {
+                      if (ctrl.uniqueRoles.indexOf(actor.role) === -1) {
+                        ctrl.uniqueRoles.push(actor.role);
+                      }
+                      if (ctrl.uniqueActors.indexOf(actor.name) === -1) {
+                        ctrl.uniqueActors.push(actor.name);
+                      }
+                    });
+                    ctrl.appData.tasks.forEach(function (task) {
+                      if (task.name && task.name.length > 0) {
+                        if (ctrl.uniqueTasks.indexOf(task.name) === -1) {
+                          ctrl.uniqueTasks.push(task.name);
+                        }
+                      }
+                      ctrl.totalTasks++;
+                    });
+                    ctrl.durationChanged();
+                    //populate unique roles:
+
+                    scope.$apply();
+                  });
+                };
+                ctrl.refresh();
+
+                ctrl.saveActors = function (actors) {
+                  database.ref('actors/').set(JSON.parse(angular.toJson(actors)));
+                  ctrl.refresh();
+                };
+
+                ctrl.saveTasks = function (tasks) {
+                  database.ref('tasks/').set(JSON.parse(angular.toJson(tasks)));
+                  ctrl.refresh();
+                };
+
+                ctrl.saveProblems = function (problems) {
+                  database.ref('problems/').set(JSON.parse(angular.toJson(problems)));
+                  ctrl.refresh();
+                };
+
+                ctrl.saveSettings = function (settings) {
+                  database.ref('settings/').set(JSON.parse(angular.toJson(settings)));
+                  ctrl.refresh();
+                };
+
+                ctrl.durationChanged = function () {
+                  let maxDayNum = 0;
+                  if (ctrl && ctrl.appData && ctrl.appData.tasks) {
+                    ctrl.appData.tasks.forEach(function (task) {
+                      if (task && task.startDay) {
+                        let endDuration = +task.startDay + +task.duration;
+                        task.$$endDay = endDuration-1;
+                        if (endDuration > maxDayNum) {
+                          maxDayNum = endDuration;
+                        }
+                        task.$$displayDuration = +task.duration;
+                        task.$$adjustedStartDay = task.startDay;
+                        task.$$adjustedEnd = task.$$endDay;
+                        ctrl.totalWork += +task.duration;
+                        ctrl.totalBudget += +task.duration;
+                      }
+                    });
+                  }
+                  ctrl.totalDuration = maxDayNum;
+                  ctrl.totalDurationRange = [];
+                  for (let i = 0; i < ctrl.totalDuration; i++) {
+                    ctrl.totalDurationRange.push(i+1);
+                  }
+                };
+
+                ctrl.getRandomNumBetween = function (min, max){
+                  // src: https://stackoverflow.com/a/7228322
+                  return Math.floor(Math.random() * (max - min + 1) + min);
+                }
+
+                ctrl.clearRunningServices = function () {
+                  if (ctrl.runningServices) {
+                    ctrl.runningServices.forEach(function (service) {
+                      $timeout.cancel(service);
+                    })
+                  }
+                  ctrl.completedTasks = 0;
+                  ctrl.simulatedEvents = [];
+                  ctrl.actualCosts = 0;
+                  ctrl.actualWork = 0;
+                  ctrl.allTasksCompletedDayIdx = null;
+                };
+
+                ctrl.stopSimulation = function () {
+                  ctrl.simulating = false;
+                  ctrl.clearRunningServices();
+                };
+
+                ctrl.simulate = function () {
+                  ctrl.simulating = true;
+                  ctrl.clearRunningServices();
+                  ctrl.appData.tasks.forEach(function (task) {
+                    if(task.$$actorAssigned) {
+                      task.$$actorAssignedObj = JSON.parse(task.$$actorAssigned);
+                      if (task.$$actorAssignedObj.cost) {
+                        task.$$costFactor = Number.parseInt(task.$$actorAssignedObj.cost)/100;
+                      }
+                      if (task.$$actorAssignedObj.perf) {
+                        task.$$perfFactor = Number.parseInt(task.$$actorAssignedObj.perf)/100;
+                      }
+                      task.$$progressDays = 0;
+                      task.$$progressCost = 0;
+                    } else {
+                      // task.$$diffDays = ctrl.getRandomNumBetween(0,10);
+                    }
+                    task.$$diffDays = null;
+                    task.$$status = 'Scheduled';
+                    task.$$linkDays = 0;
+                    task.$$adjustedStartDay = task.startDay;
+                    task.$$adjustedEnd = task.$$endDay;
+                    task.$$displayDuration = +task.duration;
+                  });
+                  for (let dayIdx=0; dayIdx<=ctrl.totalDuration; dayIdx++) {
+                    ctrl.runningServices.push($timeout(function(){
+                      ctrl.currentDayIdx = dayIdx;
+                      let dailyLuckPercent = ctrl.getRandomNumBetween(0,100); //percentage
+                      let workerPenalty = {};
+                      ctrl.appData.tasks.forEach(function (task) {
+                        if ((dayIdx+1) >= task.$$adjustedStartDay && task.$$progressDays < task.duration) {
+                          if (!(task.$$actorAssignedObj.name in workerPenalty)) {
+                            workerPenalty[task.$$actorAssignedObj.name] = 1;
+                          } else {
+                            workerPenalty[task.$$actorAssignedObj.name]++;
+                          }
+                          task.$$status = 'Progress';
+                          task.$$statusColor = 'orange';
+                          let actualWork = (task.$$perfFactor/workerPenalty[task.$$actorAssignedObj.name]);
+                          let actualCost = (task.$$costFactor/workerPenalty[task.$$actorAssignedObj.name]);
+                          task.$$progressDays += actualWork;
+                          task.$$progressCost += actualCost;
+                          ctrl.actualCosts += actualCost;
+                          ctrl.actualWork += actualWork;
+                          if (task.$$perfFactor) {
+                            console.log(dayIdx);
+                            console.log('task:' + task.name + ' ' + 'progressDays:' + task.$$progressDays);
+                          }
+
+                          if (dayIdx >= task.$$adjustedEnd) {
+                            //setup link days
+                            if (task.linkedTask) {
+                              ctrl.appData.tasks.filter(function (iTask) {
+                                return iTask.name == task.linkedTask;
+                              }).forEach(function (linkedTaskObj) {
+                                linkedTaskObj.$$linkDays++;
+                                linkedTaskObj.$$adjustedStartDay++;
+                                linkedTaskObj.$$adjustedEnd++;
+                                linkedTaskObj.$$displayDuration--;
+                              });
+                            }
+                          }
+                        } else {
+                          if (task.$$perfFactor) {
+                            console.log(dayIdx);
+                            console.log('task:' + task.name + ' dayIdx:' + dayIdx + ' taskDuration:' + task.duration + ' progressDays:' + task.$$progressDays);
+                          }
+                          if (dayIdx < task.$$adjustedStartDay) {
+                            task.$$status = 'Scheduled';
+                            task.$$statusColor = 'black';
+                          } else if (task.$$progressDays >= task.duration && (task.$$status == 'Scheduled' || task.$$status == 'Progress')) {
+                            ctrl.completedTasks++;
+                            if (ctrl.completedTasks == ctrl.totalTasks) {
+                              ctrl.allTasksCompletedDayIdx = dayIdx;
+                            }
+                            if (dayIdx == task.$$adjustedEnd && task.$$progressDays == task.duration) {
+                              task.$$status = 'OnTime';
+                              task.$$statusColor = 'blue';
+                            } else {
+                              if (dayIdx <= task.$$adjustedEnd) {
+                                task.$$status = 'Ahead';
+                                task.$$statusColor = 'forestgreen';
+                              } else {
+                                task.$$status = 'Delayed';
+                                task.$$statusColor = 'darkred';
+                              }
+                            }
+                            task.$$diffDays = Math.abs(task.$$progressDays - task.duration) + Math.abs(dayIdx - task.$$adjustedEnd);
+
+                            //setup link days
+                            if (task.linkedTask) {
+                              ctrl.appData.tasks.filter(function (iTask) {
+                                return iTask.name == task.linkedTask;
+                              }).forEach(function (linkedTaskObj) {
+                                linkedTaskObj.$$linkDays = (task.$$status == 'Delayed') ? task.$$diffDays : (task.$$diffDays*-1);
+                                linkedTaskObj.$$adjustedStartDay = +linkedTaskObj.$$adjustedStartDay + linkedTaskObj.$$linkDays;
+                                linkedTaskObj.$$adjustedEnd = +linkedTaskObj.$$adjustedEnd + linkedTaskObj.$$linkDays;
+                              });
+                            }
+                          }
+                        }
+                      });
+                      if (dayIdx >= ctrl.totalDuration) {
+                        ctrl.simulating = false;
+                      }
+                    }, Number.parseInt(ctrl.simulationSpeed*dayIdx)));
+                  }
+                };
+
+                ctrl.value = 0;
+                ctrl.increment = function(by) {
+                  this.value += by;
+                  console.log('incremented by ' + by + ', new value ' + this.value);
+                };
+              }]);
+
+    })();
+  </script>
+  </body>
+</html>
